@@ -68,6 +68,9 @@ void lights_send(uint32_t* buf) {
     gpio_put(C_SER2, GETBIT(*buf, LATCH_P2L_UPLEFT));
     lights_shift();
 
+
+    gpio_put(C_SER, 0);
+    gpio_put(C_SER2, 0);
     lights_shift();
 /*
 #define LATCH_P1L_UPLEFT 29
