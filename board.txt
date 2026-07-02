@@ -1,0 +1,56 @@
+** PI PICO **
+
+Small bread board:
+
+12v power on left column from external 2A 12v power supply
+3.3v power on right column from pi pico
+Grounds connected
+
+HID USB is supported (for a 3-panel USB HID foot board):
+GND -> GND
+5v -> pi pico 5v
+D+ -> pin 16 pi pico (C_DP)
+D- -> pin 17 pi pico (C_DM)
+
+host_hid.c:
+'a' -> test
+'b' -> service
+'c' -> clear
+
+** EACH PAD **
+
+Large bread board:
+
+12v power on left column
+3.3v power on right column
+Grounds connected
+
+[PAD]
+12v -> 12v
+12v gnd (near 12v) -> ULN2803A output
+4x sensors -> CD74HC4067 inputs
+sensor gnd -> gnd
+
+[ULN2803A]
+GND -> GND
+12v pad gnd -> outputs 1-5
+
+[74HC595N]
+VCC -> 3.3v
+GND -> GND
+RESET -> 3.3v
+EN -> NC
+Q1-Q5 -> ULN2803A inputs
+RCLK -> pin 3 pico (C_RCLK) [both pads]
+SRCLK -> pin 2 pico (C_SRCLK) [both pads]
+RSER -> pin 11 pico (C_SER) [pad 1], pin 4 (C_SER2) [pad 2]
+
+[CD74HC4067 x 2]
+VCC -> 3.3v
+GND -> GND
+S0-S3 -> pins 5-8 (C_MUX_S#) [both pads] [both chips]
+SIG -> pin 9 (C_MUX11) [pad 1] [chip 1]
+SIG -> pin 10 (C_MUX12) [pad 1] [chip 2]
+SIG -> pin 0 (C_MUX21) [pad 2] [chip 1]
+SIG -> pin 1 (C_MUX21) [pad 2] [chip 2]
+EN -> NC
