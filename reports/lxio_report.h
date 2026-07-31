@@ -17,7 +17,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p1_cn_mux0 : 1;
             uint8_t p1_dl_mux0 : 1;
             uint8_t p1_dr_mux0 : 1;
-            uint8_t empty1_mux0 : 3;
+            uint8_t p1_select_mux0 : 1;
+            uint8_t p1_menu_l_mux0 : 1;
+            uint8_t p1_menu_r_mux0 : 1;
 
             // input byte 1
             uint8_t p1_ul_mux1 : 1;
@@ -25,7 +27,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p1_cn_mux1 : 1;
             uint8_t p1_dl_mux1 : 1;
             uint8_t p1_dr_mux1 : 1;
-            uint8_t empty1_mux1 : 3;
+            uint8_t p1_select_mux1 : 1;
+            uint8_t p1_menu_l_mux1 : 1;
+            uint8_t p1_menu_r_mux1 : 1;
 
             // input byte 2
             uint8_t p1_ul_mux2 : 1;
@@ -33,7 +37,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p1_cn_mux2 : 1;
             uint8_t p1_dl_mux2 : 1;
             uint8_t p1_dr_mux2 : 1;
-            uint8_t empty1_mux2 : 3;
+            uint8_t p1_select_mux2 : 1;
+            uint8_t p1_menu_l_mux2 : 1;
+            uint8_t p1_menu_r_mux2 : 1;
 
             // input byte 3
             uint8_t p1_ul_mux3 : 1;
@@ -41,7 +47,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p1_cn_mux3 : 1;
             uint8_t p1_dl_mux3 : 1;
             uint8_t p1_dr_mux3 : 1;
-            uint8_t empty1_mux3 : 3;
+            uint8_t p1_select_mux3 : 1;
+            uint8_t p1_menu_l_mux3 : 1;
+            uint8_t p1_menu_r_mux3 : 1;
 
             // input byte 4
             uint8_t p2_ul_mux0 : 1;
@@ -49,7 +57,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p2_cn_mux0 : 1;
             uint8_t p2_dl_mux0 : 1;
             uint8_t p2_dr_mux0 : 1;
-            uint8_t empty2_mux0 : 3;
+            uint8_t p2_select_mux0 : 1;
+            uint8_t p2_menu_l_mux0 : 1;
+            uint8_t p2_menu_r_mux0 : 1;
 
             // input byte 5
             uint8_t p2_ul_mux1 : 1;
@@ -57,7 +67,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p2_cn_mux1 : 1;
             uint8_t p2_dl_mux1 : 1;
             uint8_t p2_dr_mux1 : 1;
-            uint8_t empty2_mux1 : 3;
+            uint8_t p2_select_mux1 : 1;
+            uint8_t p2_menu_l_mux1 : 1;
+            uint8_t p2_menu_r_mux1 : 1;
 
             // input byte 6
             uint8_t p2_ul_mux2 : 1;
@@ -65,7 +77,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p2_cn_mux2 : 1;
             uint8_t p2_dl_mux2 : 1;
             uint8_t p2_dr_mux2 : 1;
-            uint8_t empty2_mux2 : 3;
+            uint8_t p2_select_mux2 : 1;
+            uint8_t p2_menu_l_mux2 : 1;
+            uint8_t p2_menu_r_mux2 : 1;
 
             // input byte 7
             uint8_t p2_ul_mux3 : 1;
@@ -73,7 +87,9 @@ typedef struct __attribute((packed, aligned(1))) LXIOInputReport {
             uint8_t p2_cn_mux3 : 1;
             uint8_t p2_dl_mux3 : 1;
             uint8_t p2_dr_mux3 : 1;
-            uint8_t empty2_mux3 : 3;
+            uint8_t p2_select_mux3 : 1;
+            uint8_t p2_menu_l_mux3 : 1;
+            uint8_t p2_menu_r_mux3 : 1;
 
             // input byte 8
             uint8_t empty3_1: 1;
@@ -192,48 +208,72 @@ uint16_t lxio_get_report(uint8_t** report, struct inputArray* input, struct inpu
     lxioInputReport.p1_cn_mux0 = input_mux[0].p1_cn;
     lxioInputReport.p1_ur_mux0 = input_mux[0].p1_ur;
     lxioInputReport.p1_dr_mux0 = input_mux[0].p1_dr;
+    lxioInputReport.p1_select_mux0 = input->p1_select;
+    lxioInputReport.p1_menu_l_mux0 = input->p1_menu_l;
+    lxioInputReport.p1_menu_r_mux0 = input->p1_menu_r;
 
     lxioInputReport.p1_dl_mux1 = input_mux[1].p1_dl;
     lxioInputReport.p1_ul_mux1 = input_mux[1].p1_ul;
     lxioInputReport.p1_cn_mux1 = input_mux[1].p1_cn;
     lxioInputReport.p1_ur_mux1 = input_mux[1].p1_ur;
     lxioInputReport.p1_dr_mux1 = input_mux[1].p1_dr;
+    lxioInputReport.p1_select_mux1 = input->p1_select;
+    lxioInputReport.p1_menu_l_mux1 = input->p1_menu_l;
+    lxioInputReport.p1_menu_r_mux1 = input->p1_menu_r;
 
     lxioInputReport.p1_dl_mux2 = input_mux[2].p1_dl;
     lxioInputReport.p1_ul_mux2 = input_mux[2].p1_ul;
     lxioInputReport.p1_cn_mux2 = input_mux[2].p1_cn;
     lxioInputReport.p1_ur_mux2 = input_mux[2].p1_ur;
     lxioInputReport.p1_dr_mux2 = input_mux[2].p1_dr;
+    lxioInputReport.p1_select_mux2 = input->p1_select;
+    lxioInputReport.p1_menu_l_mux2 = input->p1_menu_l;
+    lxioInputReport.p1_menu_r_mux2 = input->p1_menu_r;
 
     lxioInputReport.p1_dl_mux3 = input_mux[3].p1_dl;
     lxioInputReport.p1_ul_mux3 = input_mux[3].p1_ul;
     lxioInputReport.p1_cn_mux3 = input_mux[3].p1_cn;
     lxioInputReport.p1_ur_mux3 = input_mux[3].p1_ur;
     lxioInputReport.p1_dr_mux3 = input_mux[3].p1_dr;
+    lxioInputReport.p1_select_mux3 = input->p1_select;
+    lxioInputReport.p1_menu_l_mux3 = input->p1_menu_l;
+    lxioInputReport.p1_menu_r_mux3 = input->p1_menu_r;
 
     lxioInputReport.p2_dl_mux0 = input_mux[0].p2_dl;
     lxioInputReport.p2_ul_mux0 = input_mux[0].p2_ul;
     lxioInputReport.p2_cn_mux0 = input_mux[0].p2_cn;
     lxioInputReport.p2_ur_mux0 = input_mux[0].p2_ur;
     lxioInputReport.p2_dr_mux0 = input_mux[0].p2_dr;
+    lxioInputReport.p2_select_mux0 = input->p2_select;
+    lxioInputReport.p2_menu_l_mux0 = input->p2_menu_l;
+    lxioInputReport.p2_menu_r_mux0 = input->p2_menu_r;
 
     lxioInputReport.p2_dl_mux1 = input_mux[1].p2_dl;
     lxioInputReport.p2_ul_mux1 = input_mux[1].p2_ul;
     lxioInputReport.p2_cn_mux1 = input_mux[1].p2_cn;
     lxioInputReport.p2_ur_mux1 = input_mux[1].p2_ur;
     lxioInputReport.p2_dr_mux1 = input_mux[1].p2_dr;
+    lxioInputReport.p2_select_mux1 = input->p2_select;
+    lxioInputReport.p2_menu_l_mux1 = input->p2_menu_l;
+    lxioInputReport.p2_menu_r_mux1 = input->p2_menu_r;
 
     lxioInputReport.p2_dl_mux2 = input_mux[2].p2_dl;
     lxioInputReport.p2_ul_mux2 = input_mux[2].p2_ul;
     lxioInputReport.p2_cn_mux2 = input_mux[2].p2_cn;
     lxioInputReport.p2_ur_mux2 = input_mux[2].p2_ur;
     lxioInputReport.p2_dr_mux2 = input_mux[2].p2_dr;
+    lxioInputReport.p2_select_mux2 = input->p2_select;
+    lxioInputReport.p2_menu_l_mux2 = input->p2_menu_l;
+    lxioInputReport.p2_menu_r_mux2 = input->p2_menu_r;
 
     lxioInputReport.p2_dl_mux3 = input_mux[3].p2_dl;
     lxioInputReport.p2_ul_mux3 = input_mux[3].p2_ul;
     lxioInputReport.p2_cn_mux3 = input_mux[3].p2_cn;
     lxioInputReport.p2_ur_mux3 = input_mux[3].p2_ur;
     lxioInputReport.p2_dr_mux3 = input_mux[3].p2_dr;
+    lxioInputReport.p2_select_mux3 = input->p2_select;
+    lxioInputReport.p2_menu_l_mux3 = input->p2_menu_l;
+    lxioInputReport.p2_menu_r_mux3 = input->p2_menu_r;
 
     lxioInputReport.p1_coin = input->p1_coin;
     lxioInputReport.p2_coin = input->p2_coin;

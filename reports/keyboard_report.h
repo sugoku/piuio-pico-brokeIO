@@ -44,12 +44,18 @@ uint16_t keyboard_get_report(KeyboardReport** report, struct inputArray* input) 
     if(!input->p1_cn)  { keyboard_press_key(KEYCODE_P1_CENTER); }
     if(!input->p1_dl)  { keyboard_press_key(KEYCODE_P1_DOWNLEFT); }
     if(!input->p1_dr)  { keyboard_press_key(KEYCODE_P1_DOWNRIGHT); }
+    if(!input->p1_select)  { keyboard_press_key(KEYCODE_P1_MENU_SELECT); }
+    if(!input->p1_menu_l)  { keyboard_press_key(KEYCODE_P1_MENU_LEFT); }
+    if(!input->p1_menu_r)  { keyboard_press_key(KEYCODE_P1_MENU_RIGHT); }
 
     if(!input->p2_ul)  { keyboard_press_key(KEYCODE_P2_UPLEFT); }
     if(!input->p2_ur)  { keyboard_press_key(KEYCODE_P2_UPRIGHT); }
     if(!input->p2_cn)  { keyboard_press_key(KEYCODE_P2_CENTER); }
     if(!input->p2_dl)  { keyboard_press_key(KEYCODE_P2_DOWNLEFT); }
     if(!input->p2_dr)  { keyboard_press_key(KEYCODE_P2_DOWNRIGHT); }
+    if(!input->p2_select)  { keyboard_press_key(KEYCODE_P2_MENU_SELECT); }
+    if(!input->p2_menu_l)  { keyboard_press_key(KEYCODE_P2_MENU_LEFT); }
+    if(!input->p2_menu_r)  { keyboard_press_key(KEYCODE_P2_MENU_RIGHT); }
 
     if(!input->p1_coin)  { keyboard_press_key(KEYCODE_P1_COIN); }
     if(!input->p2_coin)  { keyboard_press_key(KEYCODE_P2_COIN); }

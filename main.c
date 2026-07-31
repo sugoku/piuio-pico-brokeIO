@@ -150,6 +150,15 @@ void update_input_mux() {
     input.p2_dl = !GETBIT(buf_mux_p2, MUX4067_P2_DOWNLEFT);
     input.p2_dr = !GETBIT(buf_mux_p2, MUX4067_P2_DOWNRIGHT);
 
+    // Menu buttons specific to ITG dedicab.
+    // PX_DOWNRIGHT is the menu start for P1/P2.
+    input.p1_select = !GETBIT(buf_mux_global, MUX4067_JAMMA_W);
+    input.p1_menu_l = !GETBIT(buf_mux_global, MUX4067_JAMMA_X);
+    input.p1_menu_r = !GETBIT(buf_mux_global, MUX4067_JAMMA_Y);
+    input.p2_select = !GETBIT(buf_mux_global, MUX4067_P2_SELECT);
+    input.p2_menu_l = !GETBIT(buf_mux_global, MUX4067_P2_MENU_L);
+    input.p2_menu_r = !GETBIT(buf_mux_global, MUX4067_P2_MENU_R);
+
     input.p1_coin = !GETBIT(buf_mux_global, MUX4067_P1_COIN);
     input.p2_coin = !GETBIT(buf_mux_global, MUX4067_P2_COIN);
 
@@ -164,12 +173,18 @@ void update_input_mux() {
         input_mux[i].p1_cn = !GETBIT(mux4067_vals_db[i], MUX4067_P1_CENTER);
         input_mux[i].p1_dl = !GETBIT(mux4067_vals_db[i], MUX4067_P1_DOWNLEFT);
         input_mux[i].p1_dr = !GETBIT(mux4067_vals_db[i], MUX4067_P1_DOWNRIGHT);
+        input_mux[i].p1_select = !GETBIT(mux4067_vals_db[i], MUX4067_JAMMA_W);
+        input_mux[i].p1_menu_l = !GETBIT(mux4067_vals_db[i], MUX4067_JAMMA_X);
+        input_mux[i].p1_menu_r = !GETBIT(mux4067_vals_db[i], MUX4067_JAMMA_Y);
 
         input_mux[i].p2_ul = !GETBIT(mux4067_vals_db[i], MUX4067_P2_UPLEFT);
         input_mux[i].p2_ur = !GETBIT(mux4067_vals_db[i], MUX4067_P2_UPRIGHT);
         input_mux[i].p2_cn = !GETBIT(mux4067_vals_db[i], MUX4067_P2_CENTER);
         input_mux[i].p2_dl = !GETBIT(mux4067_vals_db[i], MUX4067_P2_DOWNLEFT);
         input_mux[i].p2_dr = !GETBIT(mux4067_vals_db[i], MUX4067_P2_DOWNRIGHT);
+        input_mux[i].p2_select = !GETBIT(mux4067_vals_db[i], MUX4067_P2_SELECT);
+        input_mux[i].p2_menu_l = !GETBIT(mux4067_vals_db[i], MUX4067_P2_MENU_L);
+        input_mux[i].p2_menu_r = !GETBIT(mux4067_vals_db[i], MUX4067_P2_MENU_R);
 
         input_mux[i].p1_coin = !GETBIT(mux4067_vals_db[i], MUX4067_P1_COIN);
         input_mux[i].p2_coin = !GETBIT(mux4067_vals_db[i], MUX4067_P2_COIN);

@@ -53,12 +53,18 @@ typedef struct __attribute((packed, aligned(1)))
     uint8_t p1_cn : 1;
     uint8_t p1_dl : 1;
     uint8_t p1_dr : 1;
+    uint8_t p1_select : 1;
+    uint8_t p1_menu_l : 1;
+    uint8_t p1_menu_r : 1;
 
     uint8_t p2_ul : 1;
     uint8_t p2_ur : 1;
     uint8_t p2_cn : 1;
     uint8_t p2_dl : 1;
     uint8_t p2_dr : 1;
+    uint8_t p2_select : 1;
+    uint8_t p2_menu_l : 1;
+    uint8_t p2_menu_r : 1;
 
     uint8_t p1_coin : 1;
     uint8_t p2_coin : 1;
@@ -66,7 +72,8 @@ typedef struct __attribute((packed, aligned(1)))
     uint8_t test : 1;
     uint8_t service : 1;
     uint8_t clear : 1;
-    uint8_t btn_16 : 1;
+
+    uint8_t padding : 3;
 
     // digital direction, use the dir_* constants(enum)
     // 8 = center, 0 = up, 1 = up/right, 2 = right, 3 = right/down
@@ -102,9 +109,9 @@ typedef struct __attribute((packed, aligned(1)))
 } HIDReport;
 
 static HIDReport hidReport = {
-    .p1_ul = 0, .p1_ur = 0, .p1_cn = 0, .p1_dl = 0, .p1_dr = 0,
-    .p2_ul = 0, .p2_ur = 0, .p2_cn = 0, .p2_dl = 0, .p2_dr = 0,
-    .p1_coin = 0, .p2_coin = 0, .test = 0, .service = 0, .clear = 0,
+    .p1_ul = 0, .p1_ur = 0, .p1_cn = 0, .p1_dl = 0, .p1_dr = 0, .p1_select = 0, .p1_menu_l = 0, .p1_menu_r = 0,
+    .p2_ul = 0, .p2_ur = 0, .p2_cn = 0, .p2_dl = 0, .p2_dr = 0, .p2_select = 0, .p2_menu_l = 0, .p2_menu_r = 0,
+    .p1_coin = 0, .p2_coin = 0, .test = 0, .service = 0, .clear = 0, .padding = 0,
     .direction = 0x08,
     .l_x_axis = 0x80, .l_y_axis = 0x80, .r_x_axis = 0x80, .r_y_axis = 0x80,
     // .right_axis = 0x00, .left_axis = 0x00, .up_axis = 0x00, .down_axis = 0x00,
@@ -130,12 +137,18 @@ uint16_t hid_get_report(HIDReport** report, struct inputArray* input) {
     hidReport.p1_cn = !input->p1_cn;
     hidReport.p1_dl = !input->p1_dl;
     hidReport.p1_dr = !input->p1_dr;
-
+    hidReport.p1_select = !input->p1_select;
+    hidReport.p1_menu_l = !input->p1_menu_l;
+    hidReport.p1_menu_r = !input->p1_menu_r;
+    
     hidReport.p2_ul = !input->p2_ul;
     hidReport.p2_ur = !input->p2_ur;
     hidReport.p2_cn = !input->p2_cn;
     hidReport.p2_dl = !input->p2_dl;
     hidReport.p2_dr = !input->p2_dr;
+    hidReport.p2_select = !input->p2_select;
+    hidReport.p2_menu_l = !input->p2_menu_l;
+    hidReport.p2_menu_r = !input->p2_menu_r;
 
     hidReport.p1_coin = !input->p1_coin;
     hidReport.p2_coin = !input->p2_coin;
