@@ -110,6 +110,15 @@ static const uint8_t hid_report_descriptor[] =
     // 0x0a, 0x21, 0x26,  //   Unknown
     // 0x95, 0x08,        //   REPORT_COUNT (8)
     // 0xb1, 0x02,        //   FEATURE (Data,Var,Abs)
+    
+    // 16-byte output report for lights
+    0x09, 0x00,        //   USAGE (Undefined)
+    0x15, 0x00,        //   LOGICAL_MINIMUM (0)
+    0x26, 0xff, 0x00,  //   LOGICAL_MAXIMUM (255)
+    0x75, 0x08,        //   REPORT_SIZE (8)
+    0x95, 0x10,        //   REPORT_COUNT (16)
+    0x91, 0x02,        //   OUTPUT (Data,Var,Abs)
+
     0xc0               // END_COLLECTION
 };
 

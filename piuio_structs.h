@@ -83,7 +83,9 @@ struct lightsArray {
             uint8_t r1_halo : 1;
             uint8_t l2_halo : 1;
             uint8_t l1_halo : 1;
-            uint8_t empty5 : 3;
+            uint8_t empty4 : 1;
+            uint8_t coin_pulse : 1;
+            uint8_t empty5 : 1;
             uint8_t r1_halo_dupe : 1;
             uint8_t r2_halo_dupe : 1;
 

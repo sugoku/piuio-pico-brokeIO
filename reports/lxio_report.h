@@ -266,6 +266,7 @@ void lxio_set_report(uint8_t const* buffer, uint16_t bufsize, struct lightsArray
     lights->r1_halo = lxioOutputReport.r1_halo;
     lights->r2_halo = lxioOutputReport.r2_halo;
     lights->bass_light = lxioOutputReport.bass_light;
+    lights->coin_pulse = lxioOutputReport.p1_coin_cnt;
 }
 
 #endif

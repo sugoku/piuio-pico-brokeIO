@@ -155,4 +155,63 @@ uint16_t hid_get_report(HIDReport** report, struct inputArray* input) {
     return sizeof(HIDReport);
 }
 
+typedef struct __attribute((packed, aligned(1)))
+{
+    union {
+        uint8_t data[16];
+        struct {
+            uint8_t p1_ul_light;
+            uint8_t p1_ur_light;
+            uint8_t p1_cn_light;
+            uint8_t p1_dl_light;
+            uint8_t p1_dr_light;
+
+            uint8_t p2_ul_light;
+            uint8_t p2_ur_light;
+            uint8_t p2_cn_light;
+            uint8_t p2_dl_light;
+            uint8_t p2_dr_light;
+
+            uint8_t bass_light;
+
+            uint8_t l1_halo; // Marquee UL
+            uint8_t l2_halo; // Marquee UR
+            uint8_t r1_halo; // Marquee DL
+            uint8_t r2_halo; // Marquee DR
+            
+            uint8_t coin_pulse;
+        };
+    };
+} HIDOutputReport;
+
+static HIDOutputReport hidOutputReport = {
+    .data = {0x00}
+};
+
+void hid_set_report(const uint8_t* buffer, uint16_t bufsize, struct lightsArray* lights) {
+    if (bufsize == 16) {
+        memcpy(hidOutputReport.data, buffer, bufsize);
+
+        lights->p1_ul_light = hidOutputReport.p1_ul_light;
+        lights->p1_ur_light = hidOutputReport.p1_ur_light;
+        lights->p1_cn_light = hidOutputReport.p1_cn_light;
+        lights->p1_dl_light = hidOutputReport.p1_dl_light;
+        lights->p1_dr_light = hidOutputReport.p1_dr_light;
+
+        lights->p2_ul_light = hidOutputReport.p2_ul_light;
+        lights->p2_ur_light = hidOutputReport.p2_ur_light;
+        lights->p2_cn_light = hidOutputReport.p2_cn_light;
+        lights->p2_dl_light = hidOutputReport.p2_dl_light;
+        lights->p2_dr_light = hidOutputReport.p2_dr_light;
+
+        lights->bass_light = hidOutputReport.bass_light;
+        lights->coin_pulse = hidOutputReport.coin_pulse;
+
+        lights->l1_halo = hidOutputReport.l1_halo;
+        lights->l2_halo = hidOutputReport.l2_halo;
+        lights->r1_halo = hidOutputReport.r1_halo;
+        lights->r2_halo = hidOutputReport.r2_halo;
+    }
+}
+
 #endif

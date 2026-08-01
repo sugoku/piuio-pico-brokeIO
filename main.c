@@ -329,7 +329,7 @@ void lights_task() {
         SETORCLRBIT(buf, LATCH_CABL_NEON, lights.bass_light);
 
         SETBIT(buf, LATCH_ALWAYS_ON);
-        // CLRBIT(buf, LATCH_COIN_COUNTER);
+        SETORCLRBIT(buf, LATCH_COIN_COUNTER, lights.coin_pulse);
         SETBIT(buf, LATCH_JAMMA_LED);
     } else {
         SETORCLRBIT(buf, LATCH_P1L_UPLEFT, lights.p1_ul_light);
@@ -356,7 +356,7 @@ void lights_task() {
         SETORCLRBIT(buf, LATCH_CABL_NEON, lights.bass_light);
 
         SETBIT(buf, LATCH_ALWAYS_ON);
-        // CLRBIT(buf, LATCH_COIN_COUNTER);
+        SETORCLRBIT(buf, LATCH_COIN_COUNTER, lights.coin_pulse);
         SETBIT(buf, LATCH_JAMMA_LED);
     }
 
@@ -687,6 +687,8 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             lxio_set_report(buffer, bufsize, &lights);
         } else if (input_mode == INPUT_MODE_GAMECUBE) {
             // rumble
+        } else if (input_mode == INPUT_MODE_GAMEPAD) {
+            hid_set_report(buffer, bufsize, &lights);
         }
     }
 }
