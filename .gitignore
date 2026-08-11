@@ -1,5 +1,7 @@
 # Prerequisites
 *.uf2
+# except the prebuilt firmware image, which ships alongside the source
+!piuio_pico.uf2
 *.d
 
 # Compiled Object files

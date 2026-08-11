@@ -27,6 +27,7 @@ Also, using a hand controller with games connected to the official Pump it Up on
 
 Steps tested on WSL and thus should work on Linux also:
 
+- Run `git submodule update --init` in this repo to fetch Pico-PIO-USB, which the USB host support builds against
 - Add the SDK via your method of choice (see the [pico-sdk](https://github.com/raspberrypi/pico-sdk) repo, though by default the below steps should download the SDK)
 - (If downloading the SDK separately from a Git repository) Run `git submodule update --init` inside the SDK directory to set up the other required libraries (namely tinyusb)
 - Create the "build" folder inside the "piuio-pico" folder.
