@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "hardware/clocks.h"
+#include "hardware/sync.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "pico/bootrom.h"
@@ -18,6 +19,16 @@
 #define C_DM 17 // must be C_DP + 1
 
 static uint8_t const keycode2ascii[128][2] =  { HID_KEYCODE_TO_ASCII };
+
+// Button state handed from core1 (USB host stack) to core0 (main loop).
+// Core1 is the sole writer and stores the whole word at once; core0 is the
+// sole reader. That keeps mux4067_vals single-writer on core0 and avoids a
+// cross-core read-modify-write on the global mux word.
+static volatile uint32_t hid_buttons = 0;
+
+uint32_t host_hid_buttons(void) {
+  return hid_buttons;
+}
 
 /*------------- MAIN -------------*/
 
@@ -40,12 +51,15 @@ void core1_main() {
   }
 }
 
-// core0: handle device events
+/**
+ * Start the PIO USB host stack on core1.
+ *
+ * clk_sys must already be a multiple of 12MHz (set at the top of main()) —
+ * Pico-PIO-USB derives its bit timing from it and will silently mis-sample
+ * the bus otherwise, so fail loudly at boot rather than intermittently later.
+ */
 void host_hid_init() {
-  // default 125MHz is not appropreate. Sysclock should be multiple of 12MHz.
-  set_sys_clock_khz(120000, true);
-
-  sleep_ms(10);
+  hard_assert(clock_get_hz(clk_sys) % 12000000 == 0);
 
   multicore_reset_core1();
   // all USB task run in core1
@@ -101,26 +115,36 @@ static inline bool find_key_in_report(hid_keyboard_report_t const *report, uint8
 {
   for(uint8_t i=0; i<6; i++)
   {
-    uint8_t ch = keycode2ascii[report->keycode[i]][0];
-    if (ch == search)  return true;
+    uint8_t keycode = report->keycode[i];
+
+    // keycodes are 8 bit but the ascii table only covers 0x00-0x7F. Media keys
+    // and garbled reports go above that and would read past the end of the
+    // table, returning flash bytes that can happen to match `search` and fire a
+    // phantom test/service/clear.
+    if (keycode >= TU_ARRAY_SIZE(keycode2ascii)) continue;
+
+    if (keycode2ascii[keycode][0] == search)  return true;
   }
 
   return false;
 }
 
 
-// convert hid keycode to ascii and print via usb device CDC (ignore non-printable)
+/** Map the keyboard report onto test/service/clear and publish it to core0. */
 static void process_kbd_report(uint8_t dev_addr, hid_keyboard_report_t const *report)
 {
   (void) dev_addr;
-  static hid_keyboard_report_t prev_report = { 0, 0, {0} }; // previous report to check key released
-//   bool flush = false;
 
-    SETORCLRBIT(mux4067_vals[4], MUX4067_TEST, find_key_in_report(report, 'a'));
-    SETORCLRBIT(mux4067_vals[4], MUX4067_SERVICE, find_key_in_report(report, 'b'));
-    SETORCLRBIT(mux4067_vals[4], MUX4067_CLEAR, find_key_in_report(report, 'c'));
+  // assemble the full word locally, then publish it in one store so core0
+  // cannot observe test updated but service/clear not yet applied
+  uint32_t buttons = 0;
 
-  prev_report = *report;
+  SETORCLRBIT(buttons, MUX4067_TEST, find_key_in_report(report, 'a'));
+  SETORCLRBIT(buttons, MUX4067_SERVICE, find_key_in_report(report, 'b'));
+  SETORCLRBIT(buttons, MUX4067_CLEAR, find_key_in_report(report, 'c'));
+
+  __dmb();
+  hid_buttons = buttons;
 }
 
 // send mouse report to usb device CDC
@@ -142,17 +166,19 @@ static void process_mouse_report(uint8_t dev_addr, hid_mouse_report_t const * re
 // Invoked when received report from device via interrupt endpoint
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len)
 {
-  (void) len;
   uint8_t const itf_protocol = tuh_hid_interface_protocol(dev_addr, instance);
 
+  // a short or truncated report would be read past its end once cast
   switch(itf_protocol)
   {
     case HID_ITF_PROTOCOL_KEYBOARD:
-      process_kbd_report(dev_addr, (hid_keyboard_report_t const*) report );
+      if (len >= sizeof(hid_keyboard_report_t))
+        process_kbd_report(dev_addr, (hid_keyboard_report_t const*) report );
     break;
 
     case HID_ITF_PROTOCOL_MOUSE:
-      process_mouse_report(dev_addr, (hid_mouse_report_t const*) report );
+      if (len >= sizeof(hid_mouse_report_t))
+        process_mouse_report(dev_addr, (hid_mouse_report_t const*) report );
     break;
 
     default: 

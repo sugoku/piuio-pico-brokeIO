@@ -47,6 +47,22 @@
 #define WAIT_INPUT_MUX4067 20
 #define WAIT_LIGHTS_LATCH32 20
 
+// at most one lamp output may switch per this many main loop iterations.
+// the 74HC595s latch all ten outputs on one RCLK edge, so without this a step
+// can fire ten inrush currents at once down a shared 12V ground return.
+// at roughly 400us per loop, all ten lamps changing takes about 16ms
+#define LIGHTS_CHANGE_INTERVAL 4
+
+// re-send the unchanged lamp state this often, so a bit corrupted inside a
+// 74HC595 by a noise event repairs itself. this writes identical values, so
+// no output actually switches and no inrush follows
+#define LIGHTS_REFRESH_MS 100
+
+// milliseconds without a main loop iteration before the watchdog resets the
+// board. the loop normally completes in well under a millisecond, so this only
+// fires on a genuine hang
+#define WATCHDOG_TIMEOUT_MS 500
+
 // always allow pad combo to enter bootloader; otherwise, it must be done in the service mode
 #define ALWAYS_BOOTLOADER false
 

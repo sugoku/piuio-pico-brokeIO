@@ -127,9 +127,29 @@ void flash_input_mode() {
     for (int i = 0; i <= input_mode; i++) {
         gpio_put(PICO_DEFAULT_LED_PIN, 0);
         sleep_ms(250);
+        watchdog_update();
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
         sleep_ms(250);
+        watchdog_update();
     }
+}
+
+/**
+ * Rapid blink at boot when the previous reset came from the watchdog.
+ *
+ * The board has no logging, so this is the only way to tell a hang that the
+ * watchdog recovered from apart from a power glitch that reset the chip.
+ * Note this also fires after the intentional reset that applies a mode change.
+ */
+void flash_watchdog_reboot() {
+    if (!watchdog_caused_reboot())
+        return;
+
+    for (int i = 0; i < 8; i++) {
+        gpio_put(PICO_DEFAULT_LED_PIN, i & 1);
+        sleep_ms(60);
+    }
+    sleep_ms(500);
 }
 
 void update_input_mux() {
@@ -197,6 +217,11 @@ void input_task() {
     uint32_t current_ts = board_millis();
 
     mux4067_update(lights.p1_mux, lights.p2_mux);
+
+    // core1 owns the USB host button state; fold its published snapshot into
+    // the global mux here so mux4067_vals only ever has one writer (core0)
+    mux4067_vals[MUX_GLOBAL] = host_hid_buttons();
+
     mux4067_debounce();
 
     update_input_mux();
@@ -253,6 +278,9 @@ void input_task() {
 
     // enter usb bootloader mode (be careful using in production!)
     if ((config_mode || ALWAYS_BOOTLOADER) && !input.p2_ul && !input.p2_ur && !input.p2_dr) {
+        // reset_usb_boot only redirects the calling core; core1 would keep
+        // running the host stack and driving PIO/DMA underneath the bootloader
+        multicore_reset_core1();
         reset_usb_boot(0, 0);
     }
 
@@ -499,6 +527,7 @@ void hid_task() {
 
 void init() {
     get_input_mode();
+    flash_watchdog_reboot();
     flash_input_mode();
 
     switch (input_mode) {
@@ -565,6 +594,12 @@ void init() {
 }
 
 int main() {
+    // Pico-PIO-USB needs clk_sys to be a multiple of 12MHz, and the default
+    // 125MHz is not. Do this before anything else: board_init, the PIO clock
+    // dividers and tusb_init all derive their timing from clk_sys, so raising
+    // it afterwards silently invalidates whatever they configured.
+    set_sys_clock_khz(120000, true);
+
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -592,6 +627,11 @@ int main() {
     tusb_init();
     host_hid_init();
 
+    // turn any remaining hang, firmware fault or electrical glitch alike, into
+    // a reset instead of a board that is dead until it is unplugged.
+    // flash_watchdog_reboot() makes it visible on the next boot when it fires
+    watchdog_enable(WATCHDOG_TIMEOUT_MS, true);
+
     #ifdef BENCHMARK
     uint8_t loop_toggle = 0x00;
     #endif
@@ -605,6 +645,8 @@ int main() {
         loop_toggle ^= 0x01;
         gpio_put(BENCHMARK_PIN_1, loop_toggle);
         #endif
+
+        watchdog_update();
 
         tud_task(); // tinyusb device task
 
@@ -630,6 +672,12 @@ const usbd_class_driver_t *usbd_app_driver_get_cb(uint8_t *driver_count)
         *driver_count = 1;
         return &xinput_driver;
     }
+
+    // every other mode uses the built-in drivers only, but both outputs still
+    // have to be written; falling off the end leaves tinyusb reading an
+    // indeterminate driver pointer and count
+    *driver_count = 0;
+    return NULL;
 }
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request) {

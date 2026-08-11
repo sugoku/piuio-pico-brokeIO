@@ -4,6 +4,8 @@
 /*  https://github.com/sugoku/piuio-pico-brokeIO          */
 /**********************************************************/
 
+#include <string.h>
+
 #include "input_mux4067.h"
 
 #include "bsp/board.h"
@@ -233,6 +235,6 @@ void mux4067_debounce() {
         mux4067_vals_last[mux] = mux4067_vals[mux]; // store current button state for next iteration
     }
     #else
-    memcpy(mux4067_vals_db, mux4067_vals, MUX_COUNT);
+    memcpy(mux4067_vals_db, mux4067_vals, sizeof(mux4067_vals));
     #endif
 }

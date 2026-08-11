@@ -166,41 +166,60 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
     uint8_t chr_count;
 
     const char** string_desc_arr;
+    uint8_t string_desc_count;
 
     switch (get_input_mode())
     {
         case INPUT_MODE_GAMEPAD:
             string_desc_arr = (const char**)hid_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(hid_string_descriptors);
             break;
 
         case INPUT_MODE_LXIO:
             string_desc_arr = (const char**)lxio_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(lxio_string_descriptors);
             break;
 
         case INPUT_MODE_KEYBOARD:
             string_desc_arr = (const char**)keyboard_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(keyboard_string_descriptors);
             break;
 
         case INPUT_MODE_XINPUT:
             string_desc_arr = (const char**)xinput_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(xinput_string_descriptors);
             break;
 
         case INPUT_MODE_SWITCH:
             string_desc_arr = (const char**)switch_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(switch_string_descriptors);
             break;
 
         case INPUT_MODE_GAMECUBE:
             string_desc_arr = (const char**)gamecube_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(gamecube_string_descriptors);
             break;
 
 		case INPUT_MODE_SERIAL:
             string_desc_arr = (const char**)serial_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(serial_string_descriptors);
             break;
 
         default:
             string_desc_arr = (const char**)piuio_string_descriptors;
+            string_desc_count = TU_ARRAY_SIZE(piuio_string_descriptors);
             break;
     }
+
+    // index comes straight from the host's wValue, so it can be anything from
+    // 0 to 255. Windows probes 0xEE (the Microsoft OS 1.0 descriptor) the first
+    // time it enumerates a new VID/PID, and LXIO mode only has three strings.
+    // Reading past the table hands strlen() whatever pointer-shaped bytes
+    // follow it in flash, which faults the moment they are not a valid address.
+    // Returning NULL makes tinyusb stall the request, which is the correct
+    // answer for a string the device does not have.
+    if ( index >= string_desc_count )
+        return NULL;
 
     if ( index == 0)
     {
@@ -208,11 +227,6 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
         chr_count = 1;
     }else
     {
-        // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
-        // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
-
-        //if ( !(index < sizeof(string_desc_arr)/sizeof(string_desc_arr[0])) ) return NULL;
-
         const char* str = string_desc_arr[index];
 
         // Cap at max char
