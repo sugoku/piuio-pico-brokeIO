@@ -329,7 +329,7 @@ void lights_task() {
         SETORCLRBIT(buf, LATCH_CABL_NEON, lights.bass_light);
 
         SETBIT(buf, LATCH_ALWAYS_ON);
-        // CLRBIT(buf, LATCH_COIN_COUNTER);
+        SETORCLRBIT(buf, LATCH_COIN_COUNTER, lights.coin_pulse);
         SETBIT(buf, LATCH_JAMMA_LED);
     } else {
         SETORCLRBIT(buf, LATCH_P1L_UPLEFT, lights.p1_ul_light);
@@ -356,7 +356,7 @@ void lights_task() {
         SETORCLRBIT(buf, LATCH_CABL_NEON, lights.bass_light);
 
         SETBIT(buf, LATCH_ALWAYS_ON);
-        // CLRBIT(buf, LATCH_COIN_COUNTER);
+        SETORCLRBIT(buf, LATCH_COIN_COUNTER, lights.coin_pulse);
         SETBIT(buf, LATCH_JAMMA_LED);
     }
 
