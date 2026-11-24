@@ -687,6 +687,9 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             lxio_set_report(buffer, bufsize, &lights);
         } else if (input_mode == INPUT_MODE_GAMECUBE) {
             // rumble
+        } else if (input_mode == INPUT_MODE_GAMEPAD) {
+            direct_lights = false;
+            hid_set_report(buffer, bufsize, &lights);
         }
     }
 }
