@@ -44,7 +44,7 @@
 // Application return pointer to descriptor
 uint8_t const *tud_descriptor_device_cb(void)
 {
-    switch (get_input_mode())
+    switch (get_config()->input_mode)
     {
         case INPUT_MODE_PIUIO:
             return (uint8_t const*)&piuio_device_descriptor;
@@ -85,7 +85,7 @@ uint8_t const *tud_descriptor_device_cb(void)
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t itf)
 {
     (void) itf;
-    switch (get_input_mode())
+    switch (get_config()->input_mode)
     {
         case INPUT_MODE_GAMEPAD:
             return hid_report_descriptor;
@@ -112,7 +112,7 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t itf)
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index)
 {
-    switch (get_input_mode())
+    switch (get_config()->input_mode)
     {
         case INPUT_MODE_GAMEPAD:
             return hid_configuration_descriptor;
@@ -167,7 +167,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
     const char** string_desc_arr;
 
-    switch (get_input_mode())
+    switch (get_config()->input_mode)
     {
         case INPUT_MODE_GAMEPAD:
             string_desc_arr = (const char**)hid_string_descriptors;

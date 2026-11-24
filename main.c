@@ -50,11 +50,12 @@ enum
 // const uint8_t pos[] = { 3, 0, 2, 1, 4 }; // don't touch this
 // i touched it
 
-int input_mode = -1;
-int input_mode_tmp = -1;
-
 bool config_mode = false;
 bool config_switched = false;
+bool swap_sweep_active = false;
+uint32_t last_swap_toggle_ts = 0;
+
+mutable_config_t config_tmp;
 
 // set pad lights based on whether an arrow is pressed or not, bypassing the host
 // automatically enabled for all modes besides PIUIO and LXIO
@@ -202,14 +203,22 @@ void input_task() {
     jamma_z = GETBIT(merged, MUX4067_JAMMA_Z);
 
     if (config_mode) {
+        // Toggle input mode.
         if ((!input.p1_dl && last_input.p1_dl) || (!input.p2_dl && last_input.p2_dl)) {
-            if (input_mode_tmp > 0)
-                input_mode_tmp--;
+            if (config_tmp.input_mode > 0)
+                config_tmp.input_mode--;
         } else if ((!input.p1_dr && last_input.p1_dr) || (!input.p2_dr && last_input.p2_dr)) {
-            if (input_mode_tmp < INPUT_MODE_COUNT - 1)
-                input_mode_tmp++;
+            if (config_tmp.input_mode < INPUT_MODE_COUNT - 1)
+                config_tmp.input_mode++;
         } else if ((!input.test && last_input.test) || (!input.test && last_input.test)) {
-            input_mode_tmp = (input_mode_tmp + 1) % INPUT_MODE_COUNT;
+            config_tmp.input_mode = (config_tmp.input_mode + 1) % INPUT_MODE_COUNT;
+        }
+
+        // Toggle swapping of 1P and 2P lights for ITG dedicabs (1P Up + 2P Up / P1 UL + P2 UL).
+        if ((!input.p1_ul && !input.p2_ul) && (last_input.p1_ul || last_input.p2_ul)) {
+            config_tmp.swap_pad_lights = config_tmp.swap_pad_lights > 0 ? 0 : 1;
+            last_swap_toggle_ts = current_ts;
+            swap_sweep_active = true;
         }
     }
 
@@ -222,15 +231,21 @@ void input_task() {
     // if button held down long enough, enter or exit config mode
     if (config_switched && !input.service && current_ts - last_service_ts > SETTINGS_THRESHOLD && input.test) {
         if (!config_mode) {
-            input_mode_tmp = input_mode;
+            config_tmp.input_mode = get_config()->input_mode;
+            config_tmp.swap_pad_lights = get_config()->swap_pad_lights;
+            swap_sweep_active = false;
             config_mode = true;
         } else {
             config_mode = false;
-            // save changes for mode to flash memory and reset device!
-            write_input_mode(input_mode_tmp);
-            // enable watchdog and enter infinite loop to reset
-            watchdog_enable(1, 1);
-            while(1);
+            swap_sweep_active = false;
+            bool mode_changed = (config_tmp.input_mode != get_config()->input_mode);
+            // save changes to flash memory
+            write_config(&config_tmp);
+            if (mode_changed) {
+                // enable watchdog and enter infinite loop to reset
+                watchdog_enable(1, 1);
+                while(1);
+            }
         }
         config_switched = false;
         // use config_switched to make sure that when we enter config_mode
@@ -248,25 +263,38 @@ void input_task() {
 
 void config_mode_led_update(uint32_t* buf) {
     uint32_t time = board_millis();
-    uint8_t blink_count = (time / SERVICE_BLINK_INTERVAL) % (input_mode + 1);
-    // blink for BLINK_LENGTH every BLINK_INTERVAL ms for input_mode times on the cab, but blink constantly for pad
+    uint8_t blink_count = (time / SERVICE_BLINK_INTERVAL) % (config_tmp.input_mode + 1);
+    // blink for BLINK_LENGTH every BLINK_INTERVAL ms for config_tmp.input_mode times on the cab, but blink constantly for pad
     // then leave an empty spot at the end to separate the next blinking cycle
     bool pad_state = (time % SERVICE_BLINK_INTERVAL <= SERVICE_BLINK_LENGTH);
-    bool state = (blink_count <= input_mode_tmp) && pad_state;
+    bool state = (blink_count <= config_tmp.input_mode) && pad_state;
 
     SETORCLRBIT(*buf, LATCH_JAMMA_LED, state);
 
-    SETORCLRBIT(*buf, LATCH_P1L_UPLEFT, pad_state && (input_mode_tmp & 0b100));
-    SETORCLRBIT(*buf, LATCH_P1L_CENTER, pad_state && (input_mode_tmp & 0b10));
-    SETORCLRBIT(*buf, LATCH_P1L_UPRIGHT, pad_state && (input_mode_tmp & 0b1));
+    if (swap_sweep_active && (time - last_swap_toggle_ts < 600)) {
+        // Sweep across the 8 ITG pad panels in order: 1P (Left, Down, Up, Right) -> 2P (Left, Down, Up, Right)
+        static const uint8_t p1_ldur[4] = { LATCH_P1L_CENTER, LATCH_P1L_UPRIGHT, LATCH_P1L_UPLEFT, LATCH_P1L_DOWNLEFT };
+        static const uint8_t p2_ldur[4] = { LATCH_P2L_CENTER, LATCH_P2L_UPRIGHT, LATCH_P2L_UPLEFT, LATCH_P2L_DOWNLEFT };
+        uint32_t step = (time - last_swap_toggle_ts) / 75;
+        bool second_pad = (step >= 4);
+        const uint8_t* pad = (second_pad ^ (config_tmp.swap_pad_lights != 0)) ? p2_ldur : p1_ldur;
+        CLRBIT(*buf, LATCH_P1L_DOWNLEFT);
+        CLRBIT(*buf, LATCH_P2L_DOWNLEFT);
+        SETBIT(*buf, pad[step % 4]);
+    } else {
+        swap_sweep_active = false;
+        SETORCLRBIT(*buf, LATCH_P1L_UPLEFT, pad_state && (config_tmp.input_mode & 0b100));
+        SETORCLRBIT(*buf, LATCH_P1L_CENTER, pad_state && (config_tmp.input_mode & 0b10));
+        SETORCLRBIT(*buf, LATCH_P1L_UPRIGHT, pad_state && (config_tmp.input_mode & 0b1));
 
-    SETORCLRBIT(*buf, LATCH_P2L_UPLEFT, pad_state && (input_mode_tmp & 0b100));
-    SETORCLRBIT(*buf, LATCH_P2L_CENTER, pad_state && (input_mode_tmp & 0b10));
-    SETORCLRBIT(*buf, LATCH_P2L_UPRIGHT, pad_state && (input_mode_tmp & 0b1));
+        SETORCLRBIT(*buf, LATCH_P2L_UPLEFT, pad_state && (config_tmp.input_mode & 0b100));
+        SETORCLRBIT(*buf, LATCH_P2L_CENTER, pad_state && (config_tmp.input_mode & 0b10));
+        SETORCLRBIT(*buf, LATCH_P2L_UPRIGHT, pad_state && (config_tmp.input_mode & 0b1));
+    }
 
-    SETORCLRBIT(*buf, LATCH_CABL_MARQ1, state && (input_mode_tmp & 0b100));
-    SETORCLRBIT(*buf, LATCH_CABL_MARQ2, state && (input_mode_tmp & 0b10));
-    SETORCLRBIT(*buf, LATCH_CABL_MARQ3, state && (input_mode_tmp & 0b1));
+    SETORCLRBIT(*buf, LATCH_CABL_MARQ1, state && (config_tmp.input_mode & 0b100));
+    SETORCLRBIT(*buf, LATCH_CABL_MARQ2, state && (config_tmp.input_mode & 0b10));
+    SETORCLRBIT(*buf, LATCH_CABL_MARQ3, state && (config_tmp.input_mode & 0b1));
 }
 
 void lights_task() {
@@ -300,22 +328,36 @@ void lights_task() {
         
     } else if (factory_test_mode) {
         buf = mux4067_merged(mux4067_vals_db);
-    } else if (input_mode == INPUT_MODE_SERIAL) {
+    } else if (get_config()->input_mode == INPUT_MODE_SERIAL) {
         buf = serial_lights_buf;
     } else if (direct_lights) {  // technically it could be direct_lights && !merge_mux
         uint32_t in_buf = mux4067_merged(mux4067_vals_db);
 
-        SETORCLRBIT(buf, LATCH_P1L_UPLEFT, GETBIT(in_buf, MUX4067_P1_UPLEFT));
-        SETORCLRBIT(buf, LATCH_P1L_UPRIGHT, GETBIT(in_buf, MUX4067_P1_UPRIGHT));
-        SETORCLRBIT(buf, LATCH_P1L_CENTER, GETBIT(in_buf, MUX4067_P1_CENTER));
-        SETORCLRBIT(buf, LATCH_P1L_DOWNLEFT, GETBIT(in_buf, MUX4067_P1_DOWNLEFT));
-        SETORCLRBIT(buf, LATCH_P1L_DOWNRIGHT, GETBIT(in_buf, MUX4067_P1_DOWNRIGHT));
+        if (get_config()->swap_pad_lights && get_config()->input_mode != INPUT_MODE_PIUIO) {
+            SETORCLRBIT(buf, LATCH_P1L_UPLEFT, GETBIT(in_buf, MUX4067_P2_UPLEFT));
+            SETORCLRBIT(buf, LATCH_P1L_UPRIGHT, GETBIT(in_buf, MUX4067_P2_UPRIGHT));
+            SETORCLRBIT(buf, LATCH_P1L_CENTER, GETBIT(in_buf, MUX4067_P2_CENTER));
+            SETORCLRBIT(buf, LATCH_P1L_DOWNLEFT, GETBIT(in_buf, MUX4067_P2_DOWNLEFT));
+            SETORCLRBIT(buf, LATCH_P1L_DOWNRIGHT, GETBIT(in_buf, MUX4067_P2_DOWNRIGHT));
 
-        SETORCLRBIT(buf, LATCH_P2L_UPLEFT, GETBIT(in_buf, MUX4067_P2_UPLEFT));
-        SETORCLRBIT(buf, LATCH_P2L_UPRIGHT, GETBIT(in_buf, MUX4067_P2_UPRIGHT));
-        SETORCLRBIT(buf, LATCH_P2L_CENTER, GETBIT(in_buf, MUX4067_P2_CENTER));
-        SETORCLRBIT(buf, LATCH_P2L_DOWNLEFT, GETBIT(in_buf, MUX4067_P2_DOWNLEFT));
-        SETORCLRBIT(buf, LATCH_P2L_DOWNRIGHT, GETBIT(in_buf, MUX4067_P2_DOWNRIGHT));
+            SETORCLRBIT(buf, LATCH_P2L_UPLEFT, GETBIT(in_buf, MUX4067_P1_UPLEFT));
+            SETORCLRBIT(buf, LATCH_P2L_UPRIGHT, GETBIT(in_buf, MUX4067_P1_UPRIGHT));
+            SETORCLRBIT(buf, LATCH_P2L_CENTER, GETBIT(in_buf, MUX4067_P1_CENTER));
+            SETORCLRBIT(buf, LATCH_P2L_DOWNLEFT, GETBIT(in_buf, MUX4067_P1_DOWNLEFT));
+            SETORCLRBIT(buf, LATCH_P2L_DOWNRIGHT, GETBIT(in_buf, MUX4067_P1_DOWNRIGHT));
+        } else {
+            SETORCLRBIT(buf, LATCH_P1L_UPLEFT, GETBIT(in_buf, MUX4067_P1_UPLEFT));
+            SETORCLRBIT(buf, LATCH_P1L_UPRIGHT, GETBIT(in_buf, MUX4067_P1_UPRIGHT));
+            SETORCLRBIT(buf, LATCH_P1L_CENTER, GETBIT(in_buf, MUX4067_P1_CENTER));
+            SETORCLRBIT(buf, LATCH_P1L_DOWNLEFT, GETBIT(in_buf, MUX4067_P1_DOWNLEFT));
+            SETORCLRBIT(buf, LATCH_P1L_DOWNRIGHT, GETBIT(in_buf, MUX4067_P1_DOWNRIGHT));
+
+            SETORCLRBIT(buf, LATCH_P2L_UPLEFT, GETBIT(in_buf, MUX4067_P2_UPLEFT));
+            SETORCLRBIT(buf, LATCH_P2L_UPRIGHT, GETBIT(in_buf, MUX4067_P2_UPRIGHT));
+            SETORCLRBIT(buf, LATCH_P2L_CENTER, GETBIT(in_buf, MUX4067_P2_CENTER));
+            SETORCLRBIT(buf, LATCH_P2L_DOWNLEFT, GETBIT(in_buf, MUX4067_P2_DOWNLEFT));
+            SETORCLRBIT(buf, LATCH_P2L_DOWNRIGHT, GETBIT(in_buf, MUX4067_P2_DOWNRIGHT));
+        }
 
         SETORCLRBIT(buf, LATCH_P1_S0, lights.p1_mux & 0b1);
         SETORCLRBIT(buf, LATCH_P1_S1, lights.p1_mux & 0b10);
@@ -332,17 +374,31 @@ void lights_task() {
         // CLRBIT(buf, LATCH_COIN_COUNTER);
         SETBIT(buf, LATCH_JAMMA_LED);
     } else {
-        SETORCLRBIT(buf, LATCH_P1L_UPLEFT, lights.p1_ul_light);
-        SETORCLRBIT(buf, LATCH_P1L_UPRIGHT, lights.p1_ur_light);
-        SETORCLRBIT(buf, LATCH_P1L_CENTER, lights.p1_cn_light);
-        SETORCLRBIT(buf, LATCH_P1L_DOWNLEFT, lights.p1_dl_light);
-        SETORCLRBIT(buf, LATCH_P1L_DOWNRIGHT, lights.p1_dr_light);
+        if (get_config()->swap_pad_lights && get_config()->input_mode != INPUT_MODE_PIUIO) {
+            SETORCLRBIT(buf, LATCH_P1L_UPLEFT, lights.p2_ul_light);
+            SETORCLRBIT(buf, LATCH_P1L_UPRIGHT, lights.p2_ur_light);
+            SETORCLRBIT(buf, LATCH_P1L_CENTER, lights.p2_cn_light);
+            SETORCLRBIT(buf, LATCH_P1L_DOWNLEFT, lights.p2_dl_light);
+            SETORCLRBIT(buf, LATCH_P1L_DOWNRIGHT, lights.p2_dr_light);
 
-        SETORCLRBIT(buf, LATCH_P2L_UPLEFT, lights.p2_ul_light);
-        SETORCLRBIT(buf, LATCH_P2L_UPRIGHT, lights.p2_ur_light);
-        SETORCLRBIT(buf, LATCH_P2L_CENTER, lights.p2_cn_light);
-        SETORCLRBIT(buf, LATCH_P2L_DOWNLEFT, lights.p2_dl_light);
-        SETORCLRBIT(buf, LATCH_P2L_DOWNRIGHT, lights.p2_dr_light);
+            SETORCLRBIT(buf, LATCH_P2L_UPLEFT, lights.p1_ul_light);
+            SETORCLRBIT(buf, LATCH_P2L_UPRIGHT, lights.p1_ur_light);
+            SETORCLRBIT(buf, LATCH_P2L_CENTER, lights.p1_cn_light);
+            SETORCLRBIT(buf, LATCH_P2L_DOWNLEFT, lights.p1_dl_light);
+            SETORCLRBIT(buf, LATCH_P2L_DOWNRIGHT, lights.p1_dr_light);
+        } else {
+            SETORCLRBIT(buf, LATCH_P1L_UPLEFT, lights.p1_ul_light);
+            SETORCLRBIT(buf, LATCH_P1L_UPRIGHT, lights.p1_ur_light);
+            SETORCLRBIT(buf, LATCH_P1L_CENTER, lights.p1_cn_light);
+            SETORCLRBIT(buf, LATCH_P1L_DOWNLEFT, lights.p1_dl_light);
+            SETORCLRBIT(buf, LATCH_P1L_DOWNRIGHT, lights.p1_dr_light);
+
+            SETORCLRBIT(buf, LATCH_P2L_UPLEFT, lights.p2_ul_light);
+            SETORCLRBIT(buf, LATCH_P2L_UPRIGHT, lights.p2_ur_light);
+            SETORCLRBIT(buf, LATCH_P2L_CENTER, lights.p2_cn_light);
+            SETORCLRBIT(buf, LATCH_P2L_DOWNLEFT, lights.p2_dl_light);
+            SETORCLRBIT(buf, LATCH_P2L_DOWNRIGHT, lights.p2_dr_light);
+        }
 
         SETORCLRBIT(buf, LATCH_P1_S0, lights.p1_mux & 0b1);
         SETORCLRBIT(buf, LATCH_P1_S1, lights.p1_mux & 0b10);
@@ -375,7 +431,7 @@ void lights_task() {
 }
 
 void receive_report(uint8_t *buffer) {
-    if (input_mode == INPUT_MODE_XINPUT) {
+    if (get_config()->input_mode == INPUT_MODE_XINPUT) {
         receive_xinput_report();
         memcpy(buffer, xinput_out_buffer, XINPUT_OUT_SIZE);
     }
@@ -390,9 +446,9 @@ void send_report(void *report, uint16_t report_size) {
     if (tud_suspended())
         tud_remote_wakeup();
 
-    if (memcmp(previous_report, report, report_size) != 0 || ((input_mode == INPUT_MODE_LXIO) && LXIO_ALWAYS_SEND_REPORT)) {
+    if (memcmp(previous_report, report, report_size) != 0 || ((get_config()->input_mode == INPUT_MODE_LXIO) && LXIO_ALWAYS_SEND_REPORT)) {
         bool sent = false;
-        switch (input_mode) {
+        switch (get_config()->input_mode) {
             case INPUT_MODE_XINPUT:
                 sent = send_xinput_report(report, report_size);
                 break;
@@ -412,7 +468,7 @@ void send_report(void *report, uint16_t report_size) {
 // we need double pointers to ensure that we change the address of void*
 // and that this change persists outside this function
 uint16_t get_report(void** report) {
-    switch (input_mode) {
+    switch (get_config()->input_mode) {
         case INPUT_MODE_GAMEPAD:
             return hid_get_report((HIDReport**)report, &input);
 
@@ -437,11 +493,11 @@ uint16_t get_report(void** report) {
 }
 
 void hid_task() {
-    if (config_mode || input_mode == INPUT_MODE_PIUIO)
+    if (config_mode || get_config()->input_mode == INPUT_MODE_PIUIO)
         return;
 
     // move to cdc_task
-    if (input_mode == INPUT_MODE_SERIAL) {
+    if (get_config()->input_mode == INPUT_MODE_SERIAL) {
         if (tud_cdc_n_available(ITF_NUM_CDC_0)) {
             uint8_t buf[64] = {0};
             uint32_t count = tud_cdc_n_read(ITF_NUM_CDC_0, buf, sizeof(buf));
@@ -472,9 +528,7 @@ void hid_task() {
 }
 
 void init() {
-    get_input_mode();
-
-    switch (input_mode) {
+    switch (get_config()->input_mode) {
         case INPUT_MODE_PIUIO:
             direct_lights = false;
             auto_mux = false;
@@ -594,7 +648,7 @@ const usbd_class_driver_t *usbd_app_driver_get_cb(uint8_t *driver_count)
 {
     // only switch the driver when we are using xinput; otherwise, use defaults and do nothing
 
-    if (input_mode == INPUT_MODE_XINPUT) {
+    if (get_config()->input_mode == INPUT_MODE_XINPUT) {
         *driver_count = 1;
         return &xinput_driver;
     }
@@ -602,7 +656,7 @@ const usbd_class_driver_t *usbd_app_driver_get_cb(uint8_t *driver_count)
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request) {
     // nothing to with DATA & ACK stage
-    if (input_mode == INPUT_MODE_PIUIO) {
+    if (get_config()->input_mode == INPUT_MODE_PIUIO) {
         
         #ifdef BENCHMARK
         static uint8_t loop_toggle_out = 0x00;
@@ -662,7 +716,7 @@ uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t
     // TODO: Handle the correct report type, if required
     (void)itf;
 
-    if (config_mode || input_mode == INPUT_MODE_PIUIO) return 0;
+    if (config_mode || get_config()->input_mode == INPUT_MODE_PIUIO) return 0;
 
     void* report = NULL;
     uint16_t size = get_report(&report);
@@ -680,12 +734,12 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
     (void) instance;
 
     if (!config_mode) {
-        if (input_mode == INPUT_MODE_LXIO) {
+        if (get_config()->input_mode == INPUT_MODE_LXIO) {
             // if (report_type == HID_REPORT_TYPE_OUTPUT) {
             // do not consider the report type at all! tinyusb ignores it and sets it to HID_REPORT_TYPE_INVALID (0)
             // also note that no report ID is specified in the LXIO's device descriptor
             lxio_set_report(buffer, bufsize, &lights);
-        } else if (input_mode == INPUT_MODE_GAMECUBE) {
+        } else if (get_config()->input_mode == INPUT_MODE_GAMECUBE) {
             // rumble
         }
     }
